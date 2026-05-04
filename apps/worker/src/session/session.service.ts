@@ -1,12 +1,14 @@
 import { Injectable, OnModuleDestroy } from "@nestjs/common";
 import Redis from "ioredis";
 import { nanoid } from "nanoid";
+import type { AuditReport } from "@investigator/shared";
 
 export interface ConversationTurn {
   id: string;
   question: string;
   answer: string;
   citations: { path: string; startLine: number; endLine: number }[];
+  audit?: AuditReport;
 }
 
 export interface SessionState {
@@ -70,6 +72,19 @@ export class SessionService implements OnModuleDestroy {
     const state = await this.get(id);
     if (!state) throw new Error(`session ${id} not found`);
     state.turns.push(turn);
+    await this.save(state);
+  }
+
+  async setTurnAudit(
+    sessionId: string,
+    turnId: string,
+    audit: AuditReport,
+  ): Promise<void> {
+    const state = await this.get(sessionId);
+    if (!state) return;
+    const turn = state.turns.find((t) => t.id === turnId);
+    if (!turn) return;
+    turn.audit = audit;
     await this.save(state);
   }
 }

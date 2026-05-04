@@ -132,6 +132,7 @@ export class AuditorService {
 
       if (resp.stop_reason !== "tool_use" || toolUses.length === 0) {
         const report = this.parseReport(textPiece);
+        await this.sessions.setTurnAudit(input.sessionId, input.turnId, report);
         this.hub.emit(input.sessionId, {
           type: "audit",
           turnId: input.turnId,
@@ -167,6 +168,7 @@ export class AuditorService {
       contradictionsWithEarlierTurns: [],
       notes: "auditor exhausted tool budget without producing JSON",
     };
+    await this.sessions.setTurnAudit(input.sessionId, input.turnId, fallback);
     this.hub.emit(input.sessionId, {
       type: "audit",
       turnId: input.turnId,

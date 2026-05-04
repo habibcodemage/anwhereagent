@@ -50,6 +50,7 @@ export default function Investigator() {
             question: string;
             answer: string;
             citations: Citation[];
+            audit?: AuditReport;
           }[];
         };
         setRepoUrl(data.repoUrl);
@@ -59,6 +60,7 @@ export default function Investigator() {
             question: t.question,
             answer: t.answer,
             citations: t.citations,
+            audit: t.audit,
             toolCalls: [],
             done: true,
           })),
