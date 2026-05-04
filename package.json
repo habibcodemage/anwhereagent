@@ -1,0 +1,12 @@
+{
+  "name": "codebase-investigator",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.4.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r run build",
+    "redis:up": "docker compose up -d redis",
+    "redis:down": "docker compose down"
+  }
+}
