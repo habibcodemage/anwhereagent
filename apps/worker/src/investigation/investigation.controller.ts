@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpException,
   HttpStatus,
   Param,
@@ -51,6 +52,19 @@ export class InvestigationController {
       repoPath,
     });
     return { sessionId: session.id, repoUrl: session.repoUrl };
+  }
+
+  @Get(":id")
+  async getSession(@Param("id") id: string) {
+    const session = await this.sessions.get(id);
+    if (!session) {
+      throw new HttpException("session not found", HttpStatus.NOT_FOUND);
+    }
+    return {
+      sessionId: session.id,
+      repoUrl: session.repoUrl,
+      turns: session.turns,
+    };
   }
 
   @Sse(":id/events")

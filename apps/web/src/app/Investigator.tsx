@@ -14,15 +14,63 @@ interface Turn {
   done: boolean;
 }
 
+const STORAGE_KEY = "investigator.sessionId";
+
 export default function Investigator() {
   const [repoUrl, setRepoUrl] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
+  const [restoring, setRestoring] = useState(true);
   const [question, setQuestion] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
-  const [activeTurnId, setActiveTurnId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const esRef = useRef<EventSource | null>(null);
+
+  // Restore session from localStorage on mount.
+  useEffect(() => {
+    const saved = typeof window !== "undefined"
+      ? window.localStorage.getItem(STORAGE_KEY)
+      : null;
+    if (!saved) {
+      setRestoring(false);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await fetch(`/api/investigations/${saved}`);
+        if (!res.ok) {
+          window.localStorage.removeItem(STORAGE_KEY);
+          return;
+        }
+        const data = (await res.json()) as {
+          sessionId: string;
+          repoUrl: string;
+          turns: {
+            id: string;
+            question: string;
+            answer: string;
+            citations: Citation[];
+          }[];
+        };
+        setRepoUrl(data.repoUrl);
+        setTurns(
+          data.turns.map((t) => ({
+            id: t.id,
+            question: t.question,
+            answer: t.answer,
+            citations: t.citations,
+            toolCalls: [],
+            done: true,
+          })),
+        );
+        setSessionId(data.sessionId);
+      } catch {
+        window.localStorage.removeItem(STORAGE_KEY);
+      } finally {
+        setRestoring(false);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -104,10 +152,19 @@ export default function Investigator() {
         return;
       }
       const data = (await res.json()) as { sessionId: string };
+      window.localStorage.setItem(STORAGE_KEY, data.sessionId);
       setSessionId(data.sessionId);
     } finally {
       setStarting(false);
     }
+  }
+
+  function resetSession() {
+    window.localStorage.removeItem(STORAGE_KEY);
+    setSessionId(null);
+    setTurns([]);
+    setRepoUrl("");
+    setErrorMsg(null);
   }
 
   async function ask() {
@@ -137,6 +194,10 @@ export default function Investigator() {
     }
   }
 
+  if (restoring) {
+    return <p style={{ color: "#9aa3b2" }}>restoring session…</p>;
+  }
+
   if (!sessionId) {
     return (
       <div style={{ display: "flex", gap: 8 }}>
@@ -156,9 +217,24 @@ export default function Investigator() {
 
   return (
     <div>
-      <p style={{ color: "#9aa3b2", fontSize: 13 }}>
-        Session <code>{sessionId}</code>
-      </p>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 8,
+        }}
+      >
+        <p style={{ color: "#9aa3b2", fontSize: 13, margin: 0 }}>
+          Session <code>{sessionId}</code> · <code>{repoUrl}</code>
+        </p>
+        <button
+          onClick={resetSession}
+          style={{ background: "#2a2f38", fontSize: 12, padding: "4px 10px" }}
+        >
+          new session
+        </button>
+      </div>
       {errorMsg && <p style={{ color: "#f87171" }}>{errorMsg}</p>}
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {turns.map((t) => (
